@@ -3,6 +3,8 @@
 import argparse
 import json
 import os
+import tempfile
+import shutil
 
 import license as license_pkg
 import questionary
@@ -193,14 +195,23 @@ def main():
 
     info("- output:", plugin_dir)
 
-    # Run cookiecutter template
-    cookiecutter(
-        src_path,
-        no_input=True,
-        output_dir=output_dir,
-        extra_context=context,
-        overwrite_if_exists=True,
-    )
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        template_temp = os.path.join(tmpdirname, "template")
+        shutil.copytree(src_path, template_temp, copy_function=shutil.copy)
+        for dirpath, _, filenames in os.walk(template_temp):
+            os.chmod(dirpath, 0o755)
+            for name in filenames:
+                path = os.path.join(dirpath, name)
+                os.chmod(path, 0o755)
+
+        # Run cookiecutter template
+        cookiecutter(
+            template_temp,
+            no_input=True,
+            output_dir=output_dir,
+            extra_context=context,
+            overwrite_if_exists=True,
+        )
 
     # Cleanup files after cookiecutter runs
     cleanup(plugin_dir, context)
